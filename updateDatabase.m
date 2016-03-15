@@ -42,10 +42,8 @@ end
 
 bibPrimeID  = cell(1,dGCount);
 bibPrefKey  = cell(1,dGCount);
-%fuelPrimeID = cell(1,dGCount);
-%fuelPrefKey = cell(1,dGCount);
 initialO2   = cell(1,dGCount);
-initialH2O = cell(1,dGCount);
+commonP = cell(1,dGCount);
 commonTemp  = cell(1,dGCount);
 dataPoints  = cell(1,dGCount);
 gasMixture  = cell(1,dGCount);
@@ -65,14 +63,15 @@ for i = 1:n
         dGCount = dGCount + 1;
         dataGroupID{dGCount} = char(dG.Item(dList-1).GetAttribute('id'));
         if dList == 1
-            % Bibliography and Fuel Information
-            bibPrimeID{dGCount} = h2Data(i).Biblio{1};
-            bibPrefKey{dGCount} = h2Data(i).Biblio{2};
-            %fuelPrefKey{dGCount} = h2Data(i).Fuel;
+            bibNode = xmlDocument.GetElementsByTagName('bibliographyLink');
+            % Using first listed bibliographyLink
+            bibPrimeID{dGCount} = char(bibNode.Item(0).GetAttribute('primeID'));
+            % Some exp pref Keys had misc information
+            bibDOM = ReactionLab.Util.gate2primeData('getDOM',{'primeID', bibPrimeID{dGCount}});
+            bibPrefKey{dGCount} = char(bibDOM.GetElementsByTagName('preferredKey').Item(0).InnerText);
             expPrimeID{dGCount} = h2Data(i).PrimeId;
             
             % Get O2 Volume Fraction from XML
-            
             sLinks = xmlDocument.GetElementsByTagName('speciesLink');
             for sList = 1:sLinks.Count
                 if sLinks.Item(sList-1).Attributes.Item(0).Value == 'O2'
@@ -82,15 +81,6 @@ for i = 1:n
                         o2String = char(sLinks.Item(sList-1).NextSibling.InnerText);
                         o2String = str2double(o2String) * 100;
                         initialO2{dGCount} = num2str(round( o2String, 3 ));
-                    end
-                end
-                if sLinks.Item(sList-1).Attributes.Item(0).Value == 'H2O'
-                    if isempty(sLinks.Item(sList-1).NextSibling) % if there is no amount node
-                        initialH2O{dGCount} = '-';
-                    else
-                        h2oString = char(sLinks.Item(sList-1).NextSibling.InnerText);
-                        h2oString = str2double(h2oString) * 100;
-                        initialH2O{dGCount} = num2str(round( h2oString, 3));
                     end
                 end
             end
@@ -103,11 +93,11 @@ for i = 1:n
                     switch char(prop.Item(pList-1).GetAttribute('name'))
                         
                         case 'temperature'
-                            % might want to remove this restriction
-                            if any(strcmpi(char(prop.Item(pList-1).GetAttribute('label')), {'T_furnace' 'T_gas'}))
-                                T = str2double(char(prop.Item(pList-1).ChildNodes.Item(0).InnerXml));
-                                commonTemp{dGCount} = num2str(round( T, 1 ));
-                            end
+                            tUnits = char(prop.Item(pList-1).GetAttribute('units'));
+                            tValue = str2double(char(prop.Item(pList-1).ChildNodes.Item(0).InnerXml));
+                            tValue = convertUnits(tValue, tUnits);
+                            commonTemp{dGCount} = round(tValue, 3);
+                            
                             
                         case 'initial composition'
                             compNodes = prop.Item(pList-1).GetElementsByTagName('component');
@@ -118,6 +108,13 @@ for i = 1:n
                                     gasMixture{dGCount}{end+1} =  pKey;
                                 end
                             end
+                            
+                        case 'pressure'
+                            pUnits = char(prop.Item(pList-1).GetAttribute('units'));
+                            pValue = str2double(char(prop.Item(pList-1).ChildNodes.Item(0).InnerXml));
+                            pValue = convertUnits(pValue, pUnits);
+                            commonP{dGCount} = round(pValue, 3);
+                            
                     end
                 end
             end
@@ -125,13 +122,15 @@ for i = 1:n
                 commonTemp{dGCount} = '-';
             elseif isempty(gasMixture{dGCount}) == 1
                 gasMixture{dGCount} = '-';
+            elseif isempty(commonP{dGCount}) == 1
+                commonP{dGCount} = '-';
             end
         else
             % Copy if Repeat
             bibPrimeID{dGCount} = bibPrimeID{dGCount-1};
             bibPrefKey{dGCount} = bibPrefKey{dGCount-1};
             initialO2{dGCount} = initialO2{dGCount-1};
-            initialH2O{dGCount} = initialH2O{dGCount-1};
+            commonP{dGCount} = commonP{dGCount-1};
             commonTemp{dGCount} = commonTemp{dGCount-1};
             gasMixture{dGCount} = gasMixture{dGCount-1};
             expPrimeID{dGCount} = expPrimeID{dGCount-1};
@@ -144,6 +143,9 @@ for i = 1:n
             propDescription = char(prop.Item(pList-1).GetAttribute('description'));
             propUnits = char(prop.Item(pList-1).GetAttribute('units'));
             propId = char(prop.Item(pList-1).GetAttribute('id'));
+            if isempty(propDescription)
+                propDescription = char(prop.Item(pList-1).GetAttribute('label'));
+            end
             dataPoints{dGCount}{1,pList} = propDescription;
             dataPoints{dGCount}{2,pList} = propUnits;
             dataPoints{dGCount}{3,pList} = propId;
@@ -187,12 +189,10 @@ for i = 1:length(gasMixture)
     propertyName{i} = strjoin(dataPoints{i}(1,1:end),', ');
 end
 
-emptyH2O = cellfun('isempty', initialH2O);
-initialH2O(emptyH2O) = {'-'};
-
 checkBoxData = zeros(1,length(initialO2)); checkBoxData = num2cell(logical(checkBoxData));
-tableData =     [checkBoxData', initialO2', initialH2O', formattedGasMix', commonTemp', propertyName', bibPrefKey'];
-onClickData =   [checkBoxData', tableData(:,3), tableData(:,4), tableData(:,5), tableData(:,6), expPrimeID', bibPrimeID' dataGroupID' ];
+
+tableData = [checkBoxData', bibPrefKey', propertyName', formattedGasMix', initialO2', commonTemp', commonP'];
+onClickData =   [checkBoxData', bibPrimeID', expPrimeID', tableData(:,4), tableData(:,5), tableData(:,6), tableData(:,7), dataGroupID' ];
 
 h2App.tableData = tableData;
 h2App.onClickData = onClickData;
