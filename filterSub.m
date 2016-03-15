@@ -20,6 +20,7 @@ for i = 1:size(data.table,1)
             filtered.click{count,j} = data.click{i,j};
             if j == size(data.table,2)
                 filtered.click{count,j+1} = data.click{i,j+1};
+                filtered.click{count,j+2} = data.click{i,j+2};
             end
         end
     end
