@@ -49,6 +49,7 @@ dataPoints  = cell(1,dGCount);
 gasMixture  = cell(1,dGCount);
 expPrimeID = cell(1,dGCount);
 dataGroupID = cell(1,dGCount);
+expKind = cell(1,dGCount);
 
 %% Process Data
 dGCount = 0;
@@ -70,11 +71,14 @@ for i = 1:n
             bibDOM = ReactionLab.Util.gate2primeData('getDOM',{'primeID', bibPrimeID{dGCount}});
             bibPrefKey{dGCount} = char(bibDOM.GetElementsByTagName('preferredKey').Item(0).InnerText);
             expPrimeID{dGCount} = h2Data(i).PrimeId;
+            expKind{dGCount} = char(xmlDocument.GetElementsByTagName('kind').Item(0).InnerText);
             
-            % Get O2 Volume Fraction from XML
-            sLinks = xmlDocument.GetElementsByTagName('speciesLink');
+            
+            % Get O2 Fraction from XML
+            commonProp = xmlDocument.GetElementsByTagName('commonProperties');
+            sLinks = commonProp.Item(0).GetElementsByTagName('speciesLink');
             for sList = 1:sLinks.Count
-                if sLinks.Item(sList-1).Attributes.Item(0).Value == 'O2'
+                if sLinks.Item(sList-1).GetAttribute('preferredKey') == 'O2'
                     if isempty(sLinks.Item(sList-1).NextSibling) % if there is no amount node
                         initialO2{dGCount} = '-';
                     else
@@ -86,7 +90,6 @@ for i = 1:n
             end
             
             % Get Common Temperature // Gas Mixture
-            commonProp = xmlDocument.GetElementsByTagName('commonProperties');
             for cList = 1:commonProp.Count
                 prop = commonProp.Item(cList-1).GetElementsByTagName('property');
                 for pList = 1:prop.Count
@@ -96,8 +99,7 @@ for i = 1:n
                             tUnits = char(prop.Item(pList-1).GetAttribute('units'));
                             tValue = str2double(char(prop.Item(pList-1).ChildNodes.Item(0).InnerXml));
                             tValue = convertUnits(tValue, tUnits);
-                            commonTemp{dGCount} = round(tValue, 3);
-                            
+                            commonTemp{dGCount} = num2str(round(tValue, 3));
                             
                         case 'initial composition'
                             compNodes = prop.Item(pList-1).GetElementsByTagName('component');
@@ -113,7 +115,7 @@ for i = 1:n
                             pUnits = char(prop.Item(pList-1).GetAttribute('units'));
                             pValue = str2double(char(prop.Item(pList-1).ChildNodes.Item(0).InnerXml));
                             pValue = convertUnits(pValue, pUnits);
-                            commonP{dGCount} = round(pValue, 3);
+                            commonP{dGCount} = num2str(round(pValue, 3));
                             
                     end
                 end
@@ -134,6 +136,7 @@ for i = 1:n
             commonTemp{dGCount} = commonTemp{dGCount-1};
             gasMixture{dGCount} = gasMixture{dGCount-1};
             expPrimeID{dGCount} = expPrimeID{dGCount-1};
+            expKind{dGCount} = expKind{dGCount-1};
         end
         
         
@@ -192,7 +195,7 @@ end
 checkBoxData = zeros(1,length(initialO2)); checkBoxData = num2cell(logical(checkBoxData));
 
 tableData = [checkBoxData', bibPrefKey', propertyName', formattedGasMix', initialO2', commonTemp', commonP'];
-onClickData =   [checkBoxData', bibPrimeID', expPrimeID', tableData(:,4), tableData(:,5), tableData(:,6), tableData(:,7), dataGroupID' ];
+onClickData =   [checkBoxData', bibPrimeID', expPrimeID', tableData(:,4), tableData(:,5), tableData(:,6), tableData(:,7), dataGroupID', expKind' ];
 
 h2App.tableData = tableData;
 h2App.onClickData = onClickData;
