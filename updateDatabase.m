@@ -78,14 +78,16 @@ for i = 1:n
             commonProp = xmlDocument.GetElementsByTagName('commonProperties');
             sLinks = commonProp.Item(0).GetElementsByTagName('speciesLink');
             for sList = 1:sLinks.Count
-                if sLinks.Item(sList-1).GetAttribute('preferredKey') == 'O2'
-                    if isempty(sLinks.Item(sList-1).NextSibling) % if there is no amount node
-                        initialO2{dGCount} = '-';
-                    else
-                        o2String = char(sLinks.Item(sList-1).NextSibling.InnerText);
-                        o2String = str2double(o2String) * 100;
-                        initialO2{dGCount} = num2str(round( o2String, 3 ));
+                if sLinks.Item(sList-1).GetAttribute('preferredKey') == 'O2' && ...
+                        sLinks.Item(sList-1).ParentNode.GetElementsByTagName('amount').Count ~= 0
+                    amountNode = sLinks.Item(sList-1).ParentNode.GetElementsByTagName('amount').Item(0); 
+                    o2Units = char(amountNode.GetAttribute('units'));
+                    if isempty(o2Units)
+                        o2Units = 'mole fraction';  % x00001349 has no units...
                     end
+                    o2Value = str2double(char(amountNode.InnerText));
+                    o2Value = ReactionLab.Units.units2units(o2Value, o2Units, 'mole fraction') * 100;
+                    initialO2{dGCount} = num2str(round( o2Value, 3 ));
                 end
             end
             
@@ -94,11 +96,11 @@ for i = 1:n
                 prop = commonProp.Item(cList-1).GetElementsByTagName('property');
                 for pList = 1:prop.Count
                     switch char(prop.Item(pList-1).GetAttribute('name'))
-                        
                         case 'temperature'
                             tUnits = char(prop.Item(pList-1).GetAttribute('units'));
-                            tValue = str2double(char(prop.Item(pList-1).ChildNodes.Item(0).InnerXml));
-                            tValue = convertUnits(tValue, tUnits);
+                            valueNode = prop.Item(pList-1).GetElementsByTagName('value').Item(0);
+                            tValue = str2double(char(valueNode.InnerXml));
+                            tValue = ReactionLab.Units.units2units(tValue, tUnits, 'K');
                             commonTemp{dGCount} = num2str(round(tValue, 3));
                             
                         case 'initial composition'
@@ -113,19 +115,25 @@ for i = 1:n
                             
                         case 'pressure'
                             pUnits = char(prop.Item(pList-1).GetAttribute('units'));
-                            pValue = str2double(char(prop.Item(pList-1).ChildNodes.Item(0).InnerXml));
-                            pValue = convertUnits(pValue, pUnits);
+                            valueNode = prop.Item(pList-1).GetElementsByTagName('value').Item(0);
+                            pValue = str2double(char(valueNode.InnerXml));
+                            pValue = ReactionLab.Units.units2units(pValue, pUnits, 'atm');
                             commonP{dGCount} = num2str(round(pValue, 3));
-                            
                     end
                 end
             end
+            
             if isempty(commonTemp{dGCount}) == 1
                 commonTemp{dGCount} = '-';
-            elseif isempty(gasMixture{dGCount}) == 1
+            end
+            if isempty(gasMixture{dGCount}) == 1
                 gasMixture{dGCount} = '-';
-            elseif isempty(commonP{dGCount}) == 1
+            end
+            if isempty(commonP{dGCount}) == 1
                 commonP{dGCount} = '-';
+            end
+            if isempty(initialO2{dGCount}) == 1
+                initialO2{dGCount} = '-';
             end
         else
             % Copy if Repeat
