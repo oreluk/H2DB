@@ -36,11 +36,11 @@ else
     for i = 1:size(Htable.Data,1)
         if Htable.Data{i,1} == 1
             count = count + 1;
-            legendNames{count} = [Htable.Data{i,2}, ' @ ', Htable.Data{i,7}, 'K (', num2str(Htable.Data{i,4}),'% O2)'];
+            legendNames{count} = [Htable.Data{i,4}, ' @ ', Htable.Data{i,6}, 'K (', num2str(Htable.Data{i,5}),'% O2)'];
             columnNames{count} = data.dp{i}(1,:);
             dataTable{count} = data.dp{i}(:,1:size(columnNames{count},2));
             numProps{count} = size(data.dp{i},2);
-            ids{count} = [data.click(i,8), data.click(i,10)];
+            ids{count} = [data.click(i,3), data.click(i,8)];
         end
     end
     
@@ -121,11 +121,7 @@ else
             delete(localH5)
         elseif all(strcmpi([dataTable{i}(4,:)], 'dataInXML'))
             % Download XML 
-            link = ['http://warehouse.primekinetics.org/depository/experiments/catalog/' ...
-                ids{i}{1}, '.xml'];
-            downString = webread(link);
-            expDoc = System.Xml.XmlDocument;
-            expDoc.LoadXml(downString);
+            expDoc = ReactionLab.Util.gate2primeData('getDOM',{'primeID',ids{i}{1}});
             dgGroups = expDoc.GetElementsByTagName('dataGroup');
             for dgC = 1:dgGroups.Count
                 if strcmpi(char(dgGroups.Item(dgC-1).GetAttribute('id')), ids{i}{2})
