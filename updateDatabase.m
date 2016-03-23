@@ -82,9 +82,6 @@ for i = 1:n
                         sLinks.Item(sList-1).ParentNode.GetElementsByTagName('amount').Count ~= 0
                     amountNode = sLinks.Item(sList-1).ParentNode.GetElementsByTagName('amount').Item(0); 
                     o2Units = char(amountNode.GetAttribute('units'));
-                    if isempty(o2Units)
-                        o2Units = 'mole fraction';  % x00001349 has no units...
-                    end
                     o2Value = str2double(char(amountNode.InnerText));
                     o2Value = ReactionLab.Units.units2units(o2Value, o2Units, 'mole fraction') * 100;
                     initialO2{dGCount} = num2str(round( o2Value, 3 ));

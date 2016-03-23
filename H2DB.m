@@ -103,12 +103,6 @@ tableDisplay = uitable('Parent', tablePanel, ...
 
 % Menu Bar
 menuBar = uimenu(fig,'Label','Options');
-menuFilter = uimenu(menuBar, 'Label', 'Show Only...');
-option1 = uimenu(menuFilter, 'Label', 'Pyrolysis Experiments', ...
-    'Callback', @resetButton);
-option2 = uimenu(menuFilter, 'Label', 'Oxidation Experiments', ...
-    'Callback', @resetButton);
-
 menuUpdate = uimenu(menuBar,'Label','Update Database', ...
     'Callback', {@updateDatabase, pwd});
 menuClose = uimenu(menuBar,'Label','Exit Application', ...
@@ -234,14 +228,6 @@ resetB =  uicontrol('Parent',buttonPanel, ...
                 data.gas = filtered.gas;
                 resultsFoundText.String = sprintf('Data Groups Found: %s', num2str(size(tableDisplay.Data,1)));
                 return
-                
-            case 88
-                filtered = filterSub( data, 'str2double(data.table(i,4)) == 0', [] );
-                return
-                
-            case 55
-                filtered = filterSub(data, 'str2double(data.table(i,4)) > 0', [] );
-                return
         end
 
         %% Search Menu Cases
@@ -331,7 +317,7 @@ resetB =  uicontrol('Parent',buttonPanel, ...
 
     function editBox(h,d)
         currChar = get(gcf,'CurrentCharacter');
-        if isequal(currChar,char(13)) %char(13) == enter key
+        if isequal(currChar,char(13))
             filterButton();
         end
     end
