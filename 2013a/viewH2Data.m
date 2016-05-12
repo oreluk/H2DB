@@ -22,4 +22,4 @@ catch ME
     comp.errorMessage = getReport(ME);
 end
 strOut = comp.OutputString;
-end
+
